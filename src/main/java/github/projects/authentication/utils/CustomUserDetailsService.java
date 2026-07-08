@@ -14,21 +14,21 @@ import java.util.Collections;
 @Component
 public class CustomUserDetailsService implements UserDetailsService {
     private final UserRepositoryI userRepository;
+
     public CustomUserDetailsService(UserRepositoryI userRepository) {
         this.userRepository = userRepository;
     }
+
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        try{
-            UserData userByUsername = userRepository.getUserByUsername(username);
-            User user = new User(
-                    userByUsername.getUsername(),
-                    userByUsername.getPassword(),
-                    Collections.singleton(new SimpleGrantedAuthority(userByUsername.getRole()))
-            );
-            return user;
-        }catch(Exception e){
-            throw new UsernameNotFoundException("The User With This Details is not found",e);
+        UserData userByUsername = userRepository.getUserByUsername(username);
+        if (userByUsername == null) {
+            throw new UsernameNotFoundException("No user found with username: " + username);
         }
+        return new User(
+                userByUsername.getUsername(),
+                userByUsername.getPassword(),
+                Collections.singleton(new SimpleGrantedAuthority(userByUsername.getRole()))
+        );
     }
 }

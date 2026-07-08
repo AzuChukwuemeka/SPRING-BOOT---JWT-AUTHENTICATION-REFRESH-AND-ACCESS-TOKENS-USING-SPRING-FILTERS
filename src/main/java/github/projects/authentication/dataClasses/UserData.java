@@ -1,5 +1,7 @@
 package github.projects.authentication.dataClasses;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.util.UUID;
 
 public class UserData {
@@ -23,6 +25,7 @@ public class UserData {
     public void setUsername(String username) {
         this.username = username;
     }
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     public String getPassword() {
         return password;
     }

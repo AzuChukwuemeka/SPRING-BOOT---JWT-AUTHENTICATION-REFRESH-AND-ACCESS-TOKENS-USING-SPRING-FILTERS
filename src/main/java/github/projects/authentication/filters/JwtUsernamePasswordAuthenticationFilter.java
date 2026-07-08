@@ -17,10 +17,10 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 import java.io.IOException;
-import java.time.temporal.ChronoUnit;
 
-@SuppressWarnings("unchecked")
 public class JwtUsernamePasswordAuthenticationFilter extends UsernamePasswordAuthenticationFilter {
+
+    public static final String REFRESH_TOKEN_COOKIE_NAME = "refreshToken";
 
     private final AuthenticationManager authenticationManager;
     private final JwtServiceImpl jwtService;
@@ -53,28 +53,25 @@ public class JwtUsernamePasswordAuthenticationFilter extends UsernamePasswordAut
             FilterChain chain, Authentication
                     authResult
     ) throws IOException, ServletException {
-        try{
-            String token = jwtService.generateToken(authResult.getName());
-            String refresh = jwtService.generateToken(authResult.getName(), ChronoUnit.DAYS,7);
-            Cookie refreshToken = new Cookie("refreshToken", refresh);
-            refreshToken.setHttpOnly(true);
-            response.setHeader("Authorization","Bearer ".concat(token));
-            response.addCookie(refreshToken);
+        try {
+            String token = jwtService.generateAccessToken(authResult.getName());
+            String refresh = jwtService.generateRefreshToken(authResult.getName());
+            Cookie refreshTokenCookie = new Cookie(REFRESH_TOKEN_COOKIE_NAME, refresh);
+            refreshTokenCookie.setHttpOnly(true);
+            refreshTokenCookie.setPath("/");
+            response.setHeader("Authorization", "Bearer ".concat(token));
+            response.addCookie(refreshTokenCookie);
             response.getWriter().write("Login Successful");
             response.setStatus(HttpServletResponse.SC_OK);
-        }catch(JWTCreationException ex){
-            this.unsuccessfulAuthentication(request, response, new AuthenticationException("Bad Credentials") {
-                @Override
-                public String getMessage() {
-                    return super.getMessage();
-                }
+        } catch (JWTCreationException ex) {
+            unsuccessfulAuthentication(request, response, new AuthenticationException("Bad Credentials") {
             });
         }
     }
 
     @Override
     protected void unsuccessfulAuthentication(HttpServletRequest request, HttpServletResponse response, AuthenticationException failed) throws IOException, ServletException {
-        response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         response.getWriter().write(failed.getMessage());
     }
 }

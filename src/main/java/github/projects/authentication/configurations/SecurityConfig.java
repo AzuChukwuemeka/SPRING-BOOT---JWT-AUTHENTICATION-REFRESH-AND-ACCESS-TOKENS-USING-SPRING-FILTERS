@@ -6,7 +6,6 @@ import github.projects.authentication.filters.JwtUsernamePasswordAuthenticationF
 import github.projects.authentication.repositories.UserRepositoryI;
 import github.projects.authentication.utils.CustomUserDetailsService;
 import github.projects.authentication.utils.JwtServiceImpl;
-import io.github.cdimascio.dotenv.Dotenv;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -16,6 +15,7 @@ import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -28,16 +28,32 @@ import java.util.List;
 
 @Configuration
 public class SecurityConfig {
+
+    // Publicly reachable documentation / dev-tooling endpoints. The H2 console is included
+    // here for local/demo convenience - disable it (and the frameOptions relaxation below)
+    // before pointing this app at a real production database.
+    private static final String[] PUBLIC_ENDPOINTS = {
+            "/login",
+            "/api/v1/auth/**",
+            "/v3/api-docs/**",
+            "/swagger-ui/**",
+            "/swagger-ui.html",
+            "/h2-console/**",
+            "/actuator/health",
+            "/actuator/info"
+    };
+
     @Bean
-    public PasswordEncoder passwordEncoder(){
+    public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
+
     @Bean
     public AuthenticationManager authenticationManager(
             HttpSecurity httpSecurity,
             PasswordEncoder passwordEncoder,
             CustomUserDetailsService userDetailsService
-    ){
+    ) {
         try {
             AuthenticationManagerBuilder authenticationManagerBuilder = httpSecurity.getSharedObject(AuthenticationManagerBuilder.class);
             DaoAuthenticationProvider daoAuthenticationProvider = new DaoAuthenticationProvider(passwordEncoder);
@@ -49,45 +65,42 @@ public class SecurityConfig {
             throw new RuntimeException("Error Creating AuthenticationManager Object");
         }
     }
+
     @Bean
-    public CorsConfigurationSource corsConfigurationSource(){
+    public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOrigins(List.of("*"));
         config.setAllowedMethods(List.of("*"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**",config);
+        source.registerCorsConfiguration("/**", config);
         return source;
     }
+
     @Bean
     public SecurityFilterChain securityFilterChain(
             HttpSecurity httpSecurity,
             AuthenticationManager authenticationManager,
             JwtServiceImpl jwtService,
             ObjectMapper objectMapper,
-            Dotenv dotenv,
             UserRepositoryI userRepository
-    ){
+    ) {
         try {
             httpSecurity
-                    .authorizeHttpRequests(auth -> {
-                        auth
-                                .requestMatchers(
-                                        "/login",
-                                        "/api/v1/auth/**"
-                                )
-                                .permitAll()
-                                .anyRequest()
-                                .authenticated();
-            });
+                    .authorizeHttpRequests(auth -> auth
+                            .requestMatchers(PUBLIC_ENDPOINTS)
+                            .permitAll()
+                            .anyRequest()
+                            .authenticated());
             httpSecurity.authenticationManager(authenticationManager);
             httpSecurity.cors(Customizer.withDefaults());
             httpSecurity.csrf(AbstractHttpConfigurer::disable);
             httpSecurity.sessionManagement(AbstractHttpConfigurer::disable);
+            // The H2 console renders itself in a frame; relax frame-options only for it.
+            httpSecurity.headers(headers -> headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin));
             httpSecurity.addFilterBefore(
                     new JwtAuthenticationFilter(
-                            dotenv,
                             userRepository,
                             authenticationManager,
                             jwtService
@@ -95,7 +108,7 @@ public class SecurityConfig {
                     UsernamePasswordAuthenticationFilter.class
             );
             httpSecurity.addFilterBefore(
-                    new JwtUsernamePasswordAuthenticationFilter(authenticationManager,jwtService,objectMapper),
+                    new JwtUsernamePasswordAuthenticationFilter(authenticationManager, jwtService, objectMapper),
                     UsernamePasswordAuthenticationFilter.class
             );
             return httpSecurity.build();

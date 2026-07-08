@@ -1,10 +1,42 @@
 spring:
   application:
     name: authentication
-  server:
-    port: 8080
-  logging:
-    level:
-      org:
-        springframework:
-          security=DEBUG:
+  datasource:
+    url: jdbc:h2:file:./data/authdb;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+  sql:
+    init:
+      mode: always
+
+server:
+  port: 8080
+
+jwt:
+  issuer: authentication-service
+  # Override in production via the JWT_SECRET environment variable.
+  secret: ${JWT_SECRET:change-this-secret-in-production-please-make-it-long-and-random}
+  access-token-expiration-minutes: 15
+  refresh-token-expiration-days: 7
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operationsSorter: method
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+logging:
+  level:
+    org.springframework.security: INFO
