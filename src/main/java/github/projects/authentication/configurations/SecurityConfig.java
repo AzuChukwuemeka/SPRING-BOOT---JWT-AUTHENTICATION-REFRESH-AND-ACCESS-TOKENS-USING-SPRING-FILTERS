@@ -83,6 +83,7 @@ public class SecurityConfig {
             HttpSecurity httpSecurity,
             AuthenticationManager authenticationManager,
             JwtServiceImpl jwtService,
+            JwtProperties jwtProperties,
             ObjectMapper objectMapper,
             UserRepositoryI userRepository
     ) {
@@ -108,7 +109,7 @@ public class SecurityConfig {
                     UsernamePasswordAuthenticationFilter.class
             );
             httpSecurity.addFilterBefore(
-                    new JwtUsernamePasswordAuthenticationFilter(authenticationManager, jwtService, objectMapper),
+                    new JwtUsernamePasswordAuthenticationFilter(authenticationManager, jwtService, jwtProperties, objectMapper),
                     UsernamePasswordAuthenticationFilter.class
             );
             return httpSecurity.build();

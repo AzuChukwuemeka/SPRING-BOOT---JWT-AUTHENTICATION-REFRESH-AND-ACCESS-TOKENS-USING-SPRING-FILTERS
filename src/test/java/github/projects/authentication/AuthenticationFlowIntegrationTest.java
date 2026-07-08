@@ -61,6 +61,9 @@ class AuthenticationFlowIntegrationTest {
                         .content(objectMapper.writeValueAsString(registration)))
                 .andExpect(status().isOk())
                 .andExpect(header().exists("Authorization"))
+                .andExpect(jsonPath("$.accessToken").exists())
+                .andExpect(jsonPath("$.tokenType").value("Bearer"))
+                .andExpect(jsonPath("$.expiresInSeconds").exists())
                 .andReturn();
 
         String authHeader = loginResult.getResponse().getHeader("Authorization");
